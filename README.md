@@ -654,6 +654,57 @@ like normal traffic to bypass your firewall/proxy.
 Some firewall may not like to see request with content-length not set, or with content-type set to
 application/octet-stream
 
+### Nginx reverse proxy
+
+Yes. For normal `wss://` websocket transport, you can put Spark behind Nginx and bind it to a domain name.
+
+Recommended server config:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name spark.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/spark.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/spark.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
+        proxy_buffering off;
+    }
+}
+```
+
+Run Spark on the same machine or a private backend port, for example:
+
+```bash
+spark server ws://127.0.0.1:8080
+```
+
+Then the client connects to the domain instead of the raw IP:
+
+```bash
+spark client wss://spark.example.com
+```
+
+Notes:
+
+- This reverse-proxy pattern is for websocket transport. Do not use Nginx in front of Spark if you want Spark HTTP2 transport.
+- If you use `shared_secret`, keep using it the same way. Nginx does not replace Spark authentication.
+- If you use a custom path prefix, keep the same path on the client side. Nginx can forward `/` directly without extra rewrite rules.
+
 ### Maximize your stealthiness/Make your traffic discrete <a name="stealth"></a>
 
 * Use spark with TLS activated (wss://) and use your own certificate
@@ -685,6 +736,8 @@ target/debug/spark ...
 
 ## YAML Config
 
+These examples use the same `shared_secret` on both sides. Replace the domain, ports, and target hosts with your own.
+
 Client:
 
 ```yaml
@@ -708,3 +761,71 @@ shared_secret: "your-secret"
 ```bash
 target/debug/spark server -c server.yaml
 ```
+
+Use case: browse through the remote server when you are on a restricted network.
+
+```yaml
+remote_addr: "wss://example.com:443"
+shared_secret: "your-secret"
+local_to_remote:
+  - "socks5://127.0.0.1:1080"
+```
+
+After the client starts, set your browser or system proxy to `127.0.0.1:1080`.
+
+Use case: connect from your laptop to a PostgreSQL that only the server machine can reach.
+
+```yaml
+remote_addr: "wss://example.com:443"
+shared_secret: "your-secret"
+local_to_remote:
+  - "tcp://127.0.0.1:15432:10.10.0.15:5432"
+```
+
+Then open DBeaver, psql, or DataGrip on your laptop and connect to `127.0.0.1:15432`.
+
+Use case: publish your local PostgreSQL to a cloud server so teammates or CI can access it temporarily.
+
+```yaml
+remote_addr: "wss://example.com:443"
+shared_secret: "your-secret"
+remote_to_local:
+  - "tcp://0.0.0.0:15432:127.0.0.1:5432"
+```
+
+Now other machines can connect to the server IP on port `15432`, and the traffic will be forwarded to your local database.
+
+Use case: expose your home lab SSH through a public cloud server.
+
+```yaml
+remote_addr: "wss://example.com:443"
+shared_secret: "your-secret"
+remote_to_local:
+  - "tcp://0.0.0.0:10022:127.0.0.1:22"
+```
+
+Then you can SSH from anywhere to `<server-ip>:10022`, and it lands on the client's local SSH service.
+
+Use case: share a local development site from your laptop with someone outside your LAN.
+
+```yaml
+remote_addr: "wss://example.com:443"
+shared_secret: "your-secret"
+remote_to_local:
+  - "tcp://0.0.0.0:18080:127.0.0.1:8080"
+```
+
+If your local app runs on `127.0.0.1:8080`, opening `http://<server-ip>:18080` will reach it.
+
+Use case: one client process for a jump-host setup used by an engineer.
+
+```yaml
+remote_addr: "wss://example.com:443"
+shared_secret: "your-secret"
+local_to_remote:
+  - "socks5://127.0.0.1:1080"
+  - "tcp://127.0.0.1:15432:10.10.0.15:5432"
+  - "tcp://127.0.0.1:13389:10.10.0.30:3389"
+```
+
+This gives you a local SOCKS5 proxy, database access, and RDP access through the same tunnel client.
