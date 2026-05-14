@@ -270,7 +270,7 @@ mod tests {
                 .map(|iface| iface.addr.ip())
                 .find(|ip| ip.is_ipv4() && !ip.is_loopback())
                 .unwrap();
-            ("wstunnel_test_proxy_connection", host)
+            ("spark_test_proxy_connection", host)
         };
 
         let mitm_proxy: ContainerAsync<MitmProxy> = MitmProxy.with_network(network_name).start().await.unwrap();

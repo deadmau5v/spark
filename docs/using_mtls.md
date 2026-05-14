@@ -1,4 +1,4 @@
-# Using mTLS with wstunnel
+# Using mTLS with spark
 
 ## Generating keys and certificates
 
@@ -9,14 +9,14 @@ or [Dogtag PKI](https://www.dogtagpki.org/) for example.
 
 These steps are based on: https://jamielinux.com/docs/openssl-certificate-authority/
 
-In order to setup wstunnel to authenticate clients with certificates (mTLS) one must have a certificate authority for
+In order to setup spark to authenticate clients with certificates (mTLS) one must have a certificate authority for
 signing client certificates. In this example we will create a certificate authority using OpenSSL.
 
-Run these commands from a directory which we will use to store the CA's files. For example under `~/wstunnel/client_ca`
+Run these commands from a directory which we will use to store the CA's files. For example under `~/spark/client_ca`
 
 ```shell
-$ mkdir -p $HOME/wstunnel/ca/{certs,csr,crl,newcerts,private}
-$ cd $HOME/wstunnel/ca/
+$ mkdir -p $HOME/spark/ca/{certs,csr,crl,newcerts,private}
+$ cd $HOME/spark/ca/
 $ echo 1000 > serial
 $ touch index.txt
 ```
@@ -30,7 +30,7 @@ default_ca = CA_default
 
 [ CA_default ]
 # Directory and file locations.
-dir               = $HOME/wstunnel/ca
+dir               = $HOME/spark/ca
 certs             = \$dir/certs
 crl_dir           = \$dir/crl
 new_certs_dir     = \$dir/newcerts
@@ -90,7 +90,7 @@ emailAddress                    = Email Address
 countryName_default             = GB
 stateOrProvinceName_default     = England
 localityName_default            =
-0.organizationName_default      = wstunnel development
+0.organizationName_default      = spark development
 #organizationalUnitName_default =
 #emailAddress_default           =
 
@@ -131,7 +131,7 @@ Generate the private key of the certificate authority. Normally you would encryp
 development purposes we will leave it unencrypted.
 
 ```shell
-$ cd $HOME/wstunnel/ca/
+$ cd $HOME/spark/ca/
 $ openssl genrsa -out private/ca.key.pem 4096
 ```
 
@@ -148,90 +148,90 @@ State or Province Name [England]:
 Locality Name []:
 Organization Name [Alice Ltd]:
 Organizational Unit Name []:
-Common Name []:wstunnel Development Root CA
+Common Name []:spark Development Root CA
 Email Address []:
 ```
 
-Generate a key for the wstunnel server, generate a certificate signing request (CSR) and create a certificate with our
+Generate a key for the spark server, generate a certificate signing request (CSR) and create a certificate with our
 CA for the CSR:
 
 ```shell
-$ openssl genrsa -out private/wstunnel-server.pem 2048
+$ openssl genrsa -out private/spark-server.pem 2048
 $ openssl req -config openssl.cnf \
-      -key private/wstunnel-server.pem \
-      -new -sha256 -out csr/wstunnel-server.csr.pem
+      -key private/spark-server.pem \
+      -new -sha256 -out csr/spark-server.csr.pem
 ---8<------
 Country Name (2 letter code) [GB]:
 State or Province Name [England]:
 Locality Name []:
 Organization Name [Alice Ltd]:
 Organizational Unit Name []:
-Common Name []:wstunnel Development Server
+Common Name []:spark Development Server
 Email Address []:
 
 $ openssl ca -config openssl.cnf \
       -extensions server_cert -days 375 -notext -md sha256 \
-      -in csr/wstunnel-server.csr.pem \
-      -out certs/wstunnel-server.cert.pem
+      -in csr/spark-server.csr.pem \
+      -out certs/spark-server.cert.pem
 ---8<------
 Sign the certificate? [y/n]:y
 1 out of 1 certificate requests certified, commit? [y/n]y
 ```
 
-Next we do the same thing (generate key, create request, sign request) but then for a wstunnel client:
+Next we do the same thing (generate key, create request, sign request) but then for a spark client:
 
 ```shell
-$ openssl genrsa -out private/wstunnel-client-1.pem 2048
+$ openssl genrsa -out private/spark-client-1.pem 2048
 $ openssl req -config openssl.cnf \
-      -key private/wstunnel-client-1.pem \
-      -new -sha256 -out csr/wstunnel-client-1.csr.pem
+      -key private/spark-client-1.pem \
+      -new -sha256 -out csr/spark-client-1.csr.pem
 ---8<------
 Country Name (2 letter code) [GB]:
 State or Province Name [England]:
 Locality Name []:
 Organization Name [Alice Ltd]:
 Organizational Unit Name []:
-Common Name []:wstunnel_client_1   # must contains only url valid characters
+Common Name []:spark_client_1   # must contains only url valid characters
 Email Address []:
 
 $ openssl ca -config openssl.cnf \
       -extensions client_cert -days 375 -notext -md sha256 \
-      -in csr/wstunnel-client-1.csr.pem \
-      -out certs/wstunnel-client-1.cert.pem
+      -in csr/spark-client-1.csr.pem \
+      -out certs/spark-client-1.cert.pem
 ---8<------
 Sign the certificate? [y/n]:y
 1 out of 1 certificate requests certified, commit? [y/n]y
 ```
 
-## Using mTLS on the wstunnel server side
+## Using mTLS on the spark server side
 
 This section assumes you have generated the certificate authority, keys, certificates, etc. as outlined in the "
 Generating keys and certificates" section.
 
-Start a `wstunnel` server and make it use the server key pair certificate (`--tls-certificate` and `--tls-private-key`)
+Start a `spark` server and make it use the server key pair certificate (`--tls-certificate` and `--tls-private-key`)
 and configure it to authenticate clients via mTLS (`--tls-client-ca-certs`):
 
 ```shell
-$ wstunnel server \
-   --tls-certificate ./certs/wstunnel-server.cert.pem \
-   --tls-private-key ./private/wstunnel-server.pem \
+$ spark server \
+   --tls-certificate ./certs/spark-server.cert.pem \
+   --tls-private-key ./private/spark-server.pem \
    --tls-client-ca-certs ./certs/ca.cert.pem \
    wss://0.0.0.0:8443
 ```
 
 ### Testing
 
-You can use `openssl` to test connecting with the client certificate to the wstunnel server:
+You can use `openssl` to test connecting with the client certificate to the spark server:
 
 ```shell
 $ openssl s_client -connect 127.0.0.1:8443 \
-   -key ./private/wstunnel-client-1.pem \
-   -cert ./certs/wstunnel-client-1.cert.pem \
+   -key ./private/spark-client-1.pem \
+   -cert ./certs/spark-client-1.cert.pem \
    -cert_chain ./certs/ca.cert.pem \
    -state -debug
 ---8<-----
 Acceptable client certificate CA names
-C = GB, ST = England, O = Alice Ltd, CN = wstunnel Development Root CA
+C = GB, ST = England, O = Alice Ltd, CN = spark Development Root CA
 ---8<-----
 ```
 
@@ -261,16 +261,16 @@ tells `curl` which CA certificate to use to verify the certificate of the **serv
 $ curl -vvv --cacert ./certs/ca.cert.pem https://127.0.0.1:8443
 ```
 
-## Using mTLS on the wstunnel client side
+## Using mTLS on the spark client side
 
 This section assumes you have generated the certificate authority, keys, certificates, etc. as outlined in the "
-Generating keys and certificates" section. It also assumes you have a running wstunnel server with mTLS configured. For
-example as setup in the `Using mTLS on the wstunnel server side` section.
+Generating keys and certificates" section. It also assumes you have a running spark server with mTLS configured. For
+example as setup in the `Using mTLS on the spark server side` section.
 
 ```shell
-$ wstunnel client \
-   --tls-certificate ./certs/wstunnel-client-1.cert.pem \
-   --tls-private-key ./private/wstunnel-client-1.pem \
+$ spark client \
+   --tls-certificate ./certs/spark-client-1.cert.pem \
+   --tls-private-key ./private/spark-client-1.pem \
    -L tcp://1212:localhost:1313 \
    wss://127.0.0.1:8443
    

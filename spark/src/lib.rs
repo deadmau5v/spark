@@ -153,7 +153,11 @@ pub async fn create_client(
         .unwrap(),
         socket_so_mark: SoMark::new(args.socket_so_mark),
         http_upgrade_path_prefix,
-        http_upgrade_credentials: args.http_upgrade_credentials,
+        http_upgrade_credentials: match (args.http_upgrade_credentials, args.shared_secret) {
+            (Some(header), _) => Some(header),
+            (None, Some(secret)) => Some(HeaderValue::from_str(&format!("Bearer {secret}"))?),
+            (None, None) => None,
+        },
         http_headers: args.http_headers.into_iter().filter(|(k, _)| k != HOST).collect(),
         http_headers_file: args.http_headers_file,
         http_header_host: host_header,
@@ -175,7 +179,7 @@ pub async fn create_client(
         executor,
     )
     .await?;
-    info!("Starting wstunnel client v{}", env!("CARGO_PKG_VERSION"),);
+    info!("Starting spark client v{}", env!("CARGO_PKG_VERSION"),);
 
     Ok(client)
 }
@@ -497,6 +501,7 @@ async fn run_server_impl(args: Server, executor: impl TokioExecutorRef) -> anyho
         RestrictionsRules::from_path_prefix(
             args.restrict_http_upgrade_path_prefix.as_deref().unwrap_or(&[]),
             &restrict_to,
+            args.shared_secret.as_deref(),
         )
         .expect("Cannot convert restriction rules from path-prefix and restric-to")
     };
@@ -526,7 +531,7 @@ async fn run_server_impl(args: Server, executor: impl TokioExecutorRef) -> anyho
     let server = WsServer::new(server_config, executor);
 
     info!(
-        "Starting wstunnel server v{} with config {:?}",
+        "Starting spark server v{} with config {:?}",
         env!("CARGO_PKG_VERSION"),
         server.config
     );

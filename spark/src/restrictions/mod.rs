@@ -20,7 +20,11 @@ impl RestrictionsRules {
         Ok(restrictions)
     }
 
-    pub fn from_path_prefix(path_prefixes: &[String], restrict_to: &[(String, u16)]) -> anyhow::Result<Self> {
+    pub fn from_path_prefix(
+        path_prefixes: &[String],
+        restrict_to: &[(String, u16)],
+        shared_secret: Option<&str>,
+    ) -> anyhow::Result<Self> {
         let tunnels_restrictions = if restrict_to.is_empty() {
             let r = types::AllowConfig::Tunnel(types::AllowTunnelConfig {
                 protocol: vec![],
@@ -65,11 +69,22 @@ impl RestrictionsRules {
                 .collect()
         };
 
+        let auth_match = if let Some(secret) = shared_secret {
+            Some(types::MatchConfig::Authorization(Regex::new(&format!(
+                "^Bearer {}$",
+                regex::escape(secret)
+            ))?))
+        } else {
+            None
+        };
+
         let restrictions = if path_prefixes.is_empty() {
             // if no path prefixes are provided, we allow all
             let r = types::RestrictionConfig {
                 name: "Allow All".to_string(),
-                r#match: vec![types::MatchConfig::Any],
+                r#match: auth_match
+                    .clone()
+                    .map_or_else(|| vec![types::MatchConfig::Any], |auth| vec![types::MatchConfig::Any, auth]),
                 allow: tunnels_restrictions,
             };
             vec![r]
@@ -78,9 +93,13 @@ impl RestrictionsRules {
                 .iter()
                 .map(|path_prefix| {
                     let reg = Regex::new(&format!("^{}$", regex::escape(path_prefix)))?;
+                    let mut matches = vec![types::MatchConfig::PathPrefix(reg)];
+                    if let Some(auth) = auth_match.clone() {
+                        matches.push(auth);
+                    }
                     Ok(types::RestrictionConfig {
                         name: format!("Allow path prefix {path_prefix}"),
-                        r#match: vec![types::MatchConfig::PathPrefix(reg)],
+                        r#match: matches,
                         allow: tunnels_restrictions.clone(),
                     })
                 })
@@ -103,7 +122,7 @@ mod tests {
         let path_prefixes: Vec<String> = vec![];
         let restrict_to = vec![("google.com".to_string(), 443)];
 
-        let rules = RestrictionsRules::from_path_prefix(&path_prefixes, &restrict_to)?;
+        let rules = RestrictionsRules::from_path_prefix(&path_prefixes, &restrict_to, None)?;
 
         // Validate the rules structure
         assert_eq!(rules.restrictions.len(), 1);
@@ -142,7 +161,7 @@ mod tests {
         let path_prefixes: Vec<String> = vec![];
         let restrict_to = vec![("127.0.0.1".to_string(), 443)];
 
-        let rules = RestrictionsRules::from_path_prefix(&path_prefixes, &restrict_to)?;
+        let rules = RestrictionsRules::from_path_prefix(&path_prefixes, &restrict_to, None)?;
 
         // Validate the rules structure
         assert_eq!(rules.restrictions.len(), 1);
@@ -183,7 +202,7 @@ mod tests {
         let path_prefixes = vec!["/test/path".to_string()];
         let restrict_to = vec![];
 
-        let rules = RestrictionsRules::from_path_prefix(&path_prefixes, &restrict_to)?;
+        let rules = RestrictionsRules::from_path_prefix(&path_prefixes, &restrict_to, None)?;
 
         // Validate the rules structure
         assert_eq!(rules.restrictions.len(), 1);

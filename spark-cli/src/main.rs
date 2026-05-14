@@ -1,13 +1,13 @@
 use clap::Parser;
+use spark::LocalProtocol;
+use spark::config::{Client, Server, load_client_from_file, load_server_from_file};
+use spark::executor::DefaultTokioExecutor;
+use spark::{run_client, run_server};
 use std::io;
 use std::str::FromStr;
 use tracing::warn;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::Directive;
-use wstunnel::LocalProtocol;
-use wstunnel::config::{Client, Server};
-use wstunnel::executor::DefaultTokioExecutor;
-use wstunnel::{run_client, run_server};
 
 #[cfg(feature = "jemalloc")]
 use tikv_jemallocator::Jemalloc;
@@ -20,7 +20,7 @@ static GLOBAL: Jemalloc = Jemalloc;
 /// wsTunnelClient <---> wsTunnelServer <---> RemoteHost
 #[derive(clap::Parser, Debug)]
 #[command(author, version, about, verbatim_doc_comment, long_about = None)]
-pub struct Wstunnel {
+pub struct Spark {
     #[command(subcommand)]
     commands: Commands,
 
@@ -61,7 +61,26 @@ pub enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let args = Wstunnel::parse();
+    let args = Spark::parse();
+
+    let commands = match args.commands {
+        Commands::Client(args) => {
+            let args = if let Some(path) = &args.config {
+                Box::new(load_client_from_file(path)?)
+            } else {
+                args
+            };
+            Commands::Client(args)
+        }
+        Commands::Server(args) => {
+            let args = if let Some(path) = &args.config {
+                Box::new(load_server_from_file(path)?)
+            } else {
+                args
+            };
+            Commands::Server(args)
+        }
+    };
 
     // Setup logging
     let mut env_filter = EnvFilter::builder().parse(&args.log_lvl).expect("Invalid log level");
@@ -73,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(env_filter);
 
     // stdio tunnel capture stdio, so need to log into stderr
-    if let Commands::Client(args) = &args.commands {
+    if let Commands::Client(args) = &commands {
         if args
             .local_to_remote
             .iter()
@@ -92,19 +111,19 @@ async fn main() -> anyhow::Result<()> {
         warn!("Failed to set soft filelimit to hard file limit: {}", err)
     }
 
-    match args.commands {
+    match commands {
         Commands::Client(args) => {
             run_client(*args, DefaultTokioExecutor::default())
                 .await
                 .unwrap_or_else(|err| {
-                    panic!("Cannot start wstunnel client: {err:?}");
+                    panic!("Cannot start spark client: {err:?}");
                 });
         }
         Commands::Server(args) => {
             run_server(*args, DefaultTokioExecutor::default())
                 .await
                 .unwrap_or_else(|err| {
-                    panic!("Cannot start wstunnel server: {err:?}");
+                    panic!("Cannot start spark server: {err:?}");
                 });
         }
     }

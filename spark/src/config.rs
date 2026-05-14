@@ -1,5 +1,6 @@
 use crate::tunnel::LocalProtocol;
 pub use hyper::http::{HeaderName, HeaderValue};
+use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -11,6 +12,14 @@ pub const DEFAULT_CLIENT_UPGRADE_PATH_PREFIX: &str = "v1";
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct Client {
+    /// Path to a YAML config file for client mode.
+    #[cfg_attr(feature = "clap", arg(short = 'c', long, value_name = "FILE_PATH"))]
+    pub config: Option<PathBuf>,
+
+    /// Shared secret used to authenticate against the server without mTLS.
+    #[cfg_attr(feature = "clap", arg(long, value_name = "TEXT"))]
+    pub shared_secret: Option<String>,
+
     /// Listen on local and forwards traffic from remote. Can be specified multiple times
     /// examples:
     /// 'tcp://1212:google.com:443'      =>       listen locally on tcp on port 1212 and forward to google.com on port 443
@@ -30,9 +39,9 @@ pub struct Client {
     /// 'tproxy+udp://[::1]:1212?timeout_sec=10'  listen locally on udp on port 1212 as a *transparent proxy* and forward dynamically requested tunnel
     ///                                           linux only and requires sudo/CAP_NET_ADMIN
     ///
-    /// 'stdio://google.com:443'         =>       listen for data from stdio, mainly for `ssh -o ProxyCommand="wstunnel client -L stdio://%h:%p ws://localhost:8080" my-server`
+    /// 'stdio://google.com:443'         =>       listen for data from stdio, mainly for `ssh -o ProxyCommand="spark client -L stdio://%h:%p ws://localhost:8080" my-server`
     ///
-    /// 'unix:///tmp/wstunnel.sock:g.com:443' =>  listen for data from unix socket of path /tmp/wstunnel.sock and forward to g.com:443
+    /// 'unix:///tmp/spark.sock:g.com:443' =>  listen for data from unix socket of path /tmp/spark.sock and forward to g.com:443
     #[cfg_attr(feature = "clap", arg(short='L', long, value_name = "{tcp,udp,socks5,stdio,unix}://[BIND:]PORT:HOST:PORT", value_parser = parsers::parse_tunnel_arg, verbatim_doc_comment))]
     pub local_to_remote: Vec<LocalToRemote>,
 
@@ -42,12 +51,12 @@ pub struct Client {
     /// 'udp://1212:1.1.1.1:53'          =>     listen on server for incoming udp on port 1212 and forward to cloudflare dns 1.1.1.1 on port 53 from local machine
     /// 'socks5://[::1]:1212'            =>     listen on server for incoming socks5 request on port 1212 and forward dynamically request from local machine (login/password is supported)
     /// 'http://[::1]:1212'         =>     listen on server for incoming http proxy request on port 1212 and forward dynamically request from local machine (login/password is supported)
-    /// 'unix://wstunnel.sock:g.com:443' =>     listen on server for incoming data from unix socket of path wstunnel.sock and forward to g.com:443 from local machine
+    /// 'unix://spark.sock:g.com:443' =>     listen on server for incoming data from unix socket of path spark.sock and forward to g.com:443 from local machine
     #[cfg_attr(feature = "clap", arg(short='R', long, value_name = "{tcp,udp,socks5,unix}://[BIND:]PORT:HOST:PORT", value_parser = parsers::parse_reverse_tunnel_arg, verbatim_doc_comment))]
     pub remote_to_local: Vec<LocalToRemote>,
 
     /// (linux only) Mark network packet with SO_MARK sockoption with the specified value.
-    /// You need to use {root, sudo, capabilities} to run wstunnel when using this option
+    /// You need to use {root, sudo, capabilities} to run spark when using this option
     #[cfg_attr(feature = "clap", arg(long, value_name = "INT", verbatim_doc_comment))]
     pub socket_so_mark: Option<u32>,
 
@@ -57,7 +66,7 @@ pub struct Client {
     /// It will avoid the latency of doing tcp + tls handshake with the server
     #[cfg_attr(
         feature = "clap",
-        arg(short = 'c', long, value_name = "INT", default_value = "0", verbatim_doc_comment)
+        arg(short = 'm', long, value_name = "INT", default_value = "0", verbatim_doc_comment)
     )]
     pub connection_min_idle: u32,
 
@@ -105,7 +114,7 @@ pub struct Client {
     )]
     pub tls_sni_disable: bool,
 
-    /// Enable ECH (encrypted sni) during TLS handshake to wstunnel server.
+    /// Enable ECH (encrypted sni) during TLS handshake to spark server.
     /// Warning: Ech DNS config is not refreshed over time. It is retrieved only once at startup of the program  
     #[cfg_attr(feature = "clap", arg(long, verbatim_doc_comment))]
     pub tls_ech_enable: bool,
@@ -150,7 +159,7 @@ pub struct Client {
     /// Use a specific prefix that will show up in the http path during the upgrade request.
     /// Useful if you need to route requests server side but don't have vhosts
     /// When using mTLS this option overrides the default behavior of using the common name of the
-    /// client's certificate. This will likely result in the wstunnel server rejecting the connection.
+    /// client's certificate. This will likely result in the spark server rejecting the connection.
     #[cfg_attr(feature = "clap", arg(
         short = 'P',
         long,
@@ -193,18 +202,18 @@ pub struct Client {
     #[cfg_attr(feature = "clap", arg(long, value_name = "FILE_PATH", verbatim_doc_comment))]
     pub http_headers_file: Option<PathBuf>,
 
-    /// Address of the wstunnel server
+    /// Address of the spark server
     /// You can either use websocket or http2 as transport protocol. Use websocket if you are unsure.
-    /// Example: For websocket with TLS wss://wstunnel.example.com or without ws://wstunnel.example.com
-    ///          For http2 with TLS https://wstunnel.example.com or without http://wstunnel.example.com
+    /// Example: For websocket with TLS wss://spark.example.com or without ws://spark.example.com
+    ///          For http2 with TLS https://spark.example.com or without http://spark.example.com
     ///
     /// *WARNING* HTTP2 as transport protocol is harder to make it works because:
     ///   - If you are behind a (reverse) proxy/CDN they are going to buffer the whole request before forwarding it to the server
     ///     Obviously, this is not going to work for tunneling traffic
-    ///   - if you have wstunnel behind a reverse proxy, most of them (i.e: nginx) are going to turn http2 request into http1
+    ///   - if you have spark behind a reverse proxy, most of them (i.e: nginx) are going to turn http2 request into http1
     ///     This is not going to work, because http1 does not support streaming naturally
-    ///   - The only way to make it works with http2 is to have wstunnel directly exposed to the internet without any reverse proxy in front of it
-    #[cfg_attr(feature = "clap", arg(value_name = "ws[s]|http[s]://wstunnel.server.com[:port]", value_parser = parsers::parse_server_url, verbatim_doc_comment))]
+    ///   - The only way to make it works with http2 is to have spark directly exposed to the internet without any reverse proxy in front of it
+    #[cfg_attr(feature = "clap", arg(value_name = "ws[s]|http[s]://spark.server.com[:port]", value_parser = parsers::parse_server_url, required_unless_present = "config", verbatim_doc_comment))]
     pub remote_addr: Url,
 
     /// [Optional] Certificate (pem) to present to the server when connecting over TLS (HTTPS).
@@ -250,15 +259,23 @@ pub struct Client {
 #[derive(Debug)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct Server {
-    /// Address of the wstunnel server to bind to
+    /// Path to a YAML config file for server mode.
+    #[cfg_attr(feature = "clap", arg(short = 'c', long, value_name = "FILE_PATH"))]
+    pub config: Option<PathBuf>,
+
+    /// Shared secret required from clients without using mTLS.
+    #[cfg_attr(feature = "clap", arg(long, value_name = "TEXT"))]
+    pub shared_secret: Option<String>,
+
+    /// Address of the spark server to bind to
     /// Example: With TLS wss://0.0.0.0:8080 or without ws://[::]:8080
     ///
     /// The server is capable of detecting by itself if the request is websocket or http2. So you don't need to specify it.
-    #[cfg_attr(feature = "clap", arg(value_name = "ws[s]://0.0.0.0[:port]", value_parser = parsers::parse_server_url, verbatim_doc_comment))]
+    #[cfg_attr(feature = "clap", arg(value_name = "ws[s]://0.0.0.0[:port]", value_parser = parsers::parse_server_url, required_unless_present = "config", verbatim_doc_comment))]
     pub remote_addr: Url,
 
     /// (linux only) Mark network packet with SO_MARK sockoption with the specified value.
-    /// You need to use {root, sudo, capabilities} to run wstunnel when using this option
+    /// You need to use {root, sudo, capabilities} to run spark when using this option
     #[cfg_attr(feature = "clap", arg(long, value_name = "INT", verbatim_doc_comment))]
     pub socket_so_mark: Option<u32>,
 
@@ -406,6 +423,182 @@ pub struct LocalToRemote {
     pub local_protocol: LocalProtocol,
     pub local: SocketAddr,
     pub remote: (Host, u16),
+}
+
+#[derive(Debug, Deserialize)]
+struct FileClient {
+    shared_secret: Option<String>,
+    local_to_remote: Option<Vec<String>>,
+    remote_to_local: Option<Vec<String>>,
+    socket_so_mark: Option<u32>,
+    connection_min_idle: Option<u32>,
+    connection_retry_max_backoff: Option<String>,
+    reverse_tunnel_connection_retry_max_backoff: Option<String>,
+    tls_sni_override: Option<String>,
+    tls_sni_disable: Option<bool>,
+    tls_ech_enable: Option<bool>,
+    tls_verify_certificate: Option<bool>,
+    http_proxy: Option<String>,
+    http_proxy_login: Option<String>,
+    http_proxy_password: Option<String>,
+    http_upgrade_path_prefix: Option<String>,
+    http_upgrade_credentials: Option<String>,
+    websocket_ping_frequency: Option<String>,
+    websocket_mask_frame: Option<bool>,
+    http_headers: Option<Vec<String>>,
+    http_headers_file: Option<PathBuf>,
+    remote_addr: String,
+    tls_certificate: Option<PathBuf>,
+    tls_private_key: Option<PathBuf>,
+    dns_resolver: Option<Vec<String>>,
+    dns_resolver_prefer_ipv4: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FileServer {
+    shared_secret: Option<String>,
+    socket_so_mark: Option<u32>,
+    websocket_ping_frequency: Option<String>,
+    websocket_mask_frame: Option<bool>,
+    dns_resolver: Option<Vec<String>>,
+    dns_resolver_prefer_ipv4: Option<bool>,
+    restrict_to: Option<Vec<String>>,
+    restrict_http_upgrade_path_prefix: Option<Vec<String>>,
+    restrict_config: Option<PathBuf>,
+    tls_certificate: Option<PathBuf>,
+    tls_private_key: Option<PathBuf>,
+    tls_client_ca_certs: Option<PathBuf>,
+    http_proxy: Option<String>,
+    http_proxy_login: Option<String>,
+    http_proxy_password: Option<String>,
+    remote_to_local_server_idle_timeout: Option<String>,
+    remote_addr: String,
+}
+
+#[cfg(feature = "clap")]
+pub fn load_client_from_file(path: &PathBuf) -> anyhow::Result<Client> {
+    use std::fs::File;
+    use std::io::BufReader;
+
+    let cfg: FileClient = serde_yaml::from_reader(BufReader::new(File::open(path)?))?;
+
+    Ok(Client {
+        config: Some(path.clone()),
+        shared_secret: cfg.shared_secret,
+        local_to_remote: cfg
+            .local_to_remote
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| parsers::parse_tunnel_arg(&v))
+            .collect::<Result<_, _>>()?,
+        remote_to_local: cfg
+            .remote_to_local
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| parsers::parse_reverse_tunnel_arg(&v))
+            .collect::<Result<_, _>>()?,
+        socket_so_mark: cfg.socket_so_mark,
+        connection_min_idle: cfg.connection_min_idle.unwrap_or(0),
+        connection_retry_max_backoff: cfg
+            .connection_retry_max_backoff
+            .as_deref()
+            .map(parsers::parse_duration_sec)
+            .transpose()?
+            .unwrap_or(Duration::from_secs(5 * 60)),
+        reverse_tunnel_connection_retry_max_backoff: cfg
+            .reverse_tunnel_connection_retry_max_backoff
+            .as_deref()
+            .map(parsers::parse_duration_sec)
+            .transpose()?
+            .unwrap_or(Duration::from_secs(1)),
+        tls_sni_override: cfg
+            .tls_sni_override
+            .as_deref()
+            .map(parsers::parse_sni_override)
+            .transpose()?,
+        tls_sni_disable: cfg.tls_sni_disable.unwrap_or(false),
+        tls_ech_enable: cfg.tls_ech_enable.unwrap_or(false),
+        tls_verify_certificate: cfg.tls_verify_certificate.unwrap_or(false),
+        http_proxy: cfg.http_proxy,
+        http_proxy_login: cfg.http_proxy_login,
+        http_proxy_password: cfg.http_proxy_password,
+        http_upgrade_path_prefix: cfg
+            .http_upgrade_path_prefix
+            .unwrap_or_else(|| DEFAULT_CLIENT_UPGRADE_PATH_PREFIX.to_string()),
+        http_upgrade_credentials: cfg
+            .http_upgrade_credentials
+            .as_deref()
+            .map(parsers::parse_http_credentials)
+            .transpose()?,
+        websocket_ping_frequency: cfg
+            .websocket_ping_frequency
+            .as_deref()
+            .map(parsers::parse_duration_sec)
+            .transpose()?
+            .or(Some(Duration::from_secs(30))),
+        websocket_mask_frame: cfg.websocket_mask_frame.unwrap_or(false),
+        http_headers: cfg
+            .http_headers
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| parsers::parse_http_headers(&v))
+            .collect::<Result<_, _>>()?,
+        http_headers_file: cfg.http_headers_file,
+        remote_addr: parsers::parse_server_url(&cfg.remote_addr)?,
+        tls_certificate: cfg.tls_certificate,
+        tls_private_key: cfg.tls_private_key,
+        dns_resolver: cfg
+            .dns_resolver
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| parsers::parse_server_url(&v))
+            .collect::<Result<_, _>>()?,
+        dns_resolver_prefer_ipv4: cfg.dns_resolver_prefer_ipv4.unwrap_or(false),
+    })
+}
+
+#[cfg(feature = "clap")]
+pub fn load_server_from_file(path: &PathBuf) -> anyhow::Result<Server> {
+    use std::fs::File;
+    use std::io::BufReader;
+
+    let cfg: FileServer = serde_yaml::from_reader(BufReader::new(File::open(path)?))?;
+
+    Ok(Server {
+        config: Some(path.clone()),
+        shared_secret: cfg.shared_secret,
+        remote_addr: parsers::parse_server_url(&cfg.remote_addr)?,
+        socket_so_mark: cfg.socket_so_mark,
+        websocket_ping_frequency: cfg
+            .websocket_ping_frequency
+            .as_deref()
+            .map(parsers::parse_duration_sec)
+            .transpose()?
+            .or(Some(Duration::from_secs(30))),
+        websocket_mask_frame: cfg.websocket_mask_frame.unwrap_or(false),
+        dns_resolver: cfg
+            .dns_resolver
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| parsers::parse_server_url(&v))
+            .collect::<Result<_, _>>()?,
+        dns_resolver_prefer_ipv4: cfg.dns_resolver_prefer_ipv4.unwrap_or(false),
+        restrict_to: cfg.restrict_to,
+        restrict_http_upgrade_path_prefix: cfg.restrict_http_upgrade_path_prefix,
+        restrict_config: cfg.restrict_config,
+        tls_certificate: cfg.tls_certificate,
+        tls_private_key: cfg.tls_private_key,
+        tls_client_ca_certs: cfg.tls_client_ca_certs,
+        http_proxy: cfg.http_proxy,
+        http_proxy_login: cfg.http_proxy_login,
+        http_proxy_password: cfg.http_proxy_password,
+        remote_to_local_server_idle_timeout: cfg
+            .remote_to_local_server_idle_timeout
+            .as_deref()
+            .map(parsers::parse_duration_sec)
+            .transpose()?
+            .unwrap_or(Duration::from_secs(3 * 60)),
+    })
 }
 
 #[cfg(feature = "clap")]

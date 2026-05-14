@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/erebe/wstunnel/raw/main/docs/logo_wstunnel.png" alt="wstunnel logo" height="400"/>
+  <img src="https://github.com/deadmau5v/spark/raw/main/docs/logo_spark.png" alt="spark logo" height="400"/>
 </p>
 
 <p align="right">
@@ -24,10 +24,10 @@ Most of the time when you are using a public network, you are behind some kind o
 purpose is to constrain you to only use certain kind of protocols and consult only a subset of the web. Nowadays, the
 most widespread protocol is http and is de facto allowed by third party equipment.
 
-Wstunnel uses the websocket protocol which is compatible with http in order to bypass firewalls and proxies. Wstunnel
+Spark uses the websocket protocol which is compatible with http in order to bypass firewalls and proxies. Spark
 allows you to tunnel whatever traffic you want and access whatever resources/site you need.
 
-My inspiration came from [this project](https://www.npmjs.com/package/wstunnel) but as I don't want to install npm and
+My inspiration came from [the original wstunnel project](https://www.npmjs.com/package/wstunnel) but as I don't want to install npm and
 nodejs to use this tool, I remade it in ~~Haskell~~ Rust and improved it.
 
 **What to expect:**
@@ -39,23 +39,23 @@ nodejs to use this tool, I remade it in ~~Haskell~~ Rust and improved it.
 * Support for using http proxy (when behind one) as gateway
 * Support of proxy protocol
 * Support for tls/https server with certificates auto-reload (with embedded self-signed certificate, or your own)
-* Support of mTLS with certificates auto-reload - [documentation here](https://github.com/erebe/wstunnel/blob/main/docs/using_mtls.md)
+* Support of mTLS with certificates auto-reload - [documentation here](https://github.com/deadmau5v/spark/blob/main/docs/using_mtls.md)
 * Support IPv6
 * Support for Websocket and HTTP2 as transport protocol (websocket is more performant)
-* **Standalone binaries** (so just cp it where you want) [here](https://github.com/erebe/wstunnel/releases)
+* **Standalone binaries** (so just cp it where you want) [here](https://github.com/deadmau5v/spark/releases)
 
 ## Sponsors <a name="sponsors"></a>
 
-Part of Wstunnel development has been sponsored by
+Part of Spark development has been sponsored by
 <p align="center">
    <a href="https://serviceplanet.nl">
-    <img width="200" height="100" src="https://github.com/erebe/wstunnel/raw/main/docs/logo_serviceplanet.png" alt="service planet logo"/>
+    <img width="200" height="100" src="https://github.com/deadmau5v/spark/raw/main/docs/logo_serviceplanet.png" alt="service planet logo"/>
    </a></p>
 
 ## Note <a name="note"></a>
 
-v7.0.0 is a complete rewrite of wstunnel in Rust and is not compatible with previous version.
-Previous code in Haskell can be found on branch https://github.com/erebe/wstunnel/tree/haskell
+v7.0.0 is a complete rewrite of spark in Rust and is not compatible with previous version.
+Previous code in Haskell can be found on branch https://github.com/deadmau5v/spark/tree/haskell
 
 What to expect from previous version:
 
@@ -73,12 +73,12 @@ What to expect from previous version:
 ## Demo server <a name="demo"></a>
 
 If you just want to try out that you can bypass your proxy/firewall.
-You can give it a try with wstunnel demo server.
+You can give it a try with spark demo server.
 
 ```bash
-# In a terminal start wstunnel client
+# In a terminal start spark client
 # You can set as tls-sni-override whatever domain you want. The tunnel is the only one that is going to be allowed. 
-wstunnel client -L 'tcp://4443:10.43.0.11:444' -P demo --tls-sni-override=google.fr wss://49.13.58.9
+spark client -L 'tcp://4443:10.43.0.11:444' -P demo --tls-sni-override=google.fr wss://49.13.58.9
 
 # on another terminal, run curl and it should return you this greetings
 curl -k https://localhost:4443
@@ -89,21 +89,21 @@ curl -k https://localhost:4443
 ## Command line <a name="cmd"></a>
 
 ```
-Usage: wstunnel client [OPTIONS] <ws[s]|http[s]://wstunnel.server.com[:port]>
+Usage: spark client [OPTIONS] <ws[s]|http[s]://spark.server.com[:port]>
 
 Arguments:
-  <ws[s]|http[s]://wstunnel.server.com[:port]>
-          Address of the wstunnel server
+  <ws[s]|http[s]://spark.server.com[:port]>
+          Address of the spark server
           You can either use websocket or http2 as transport protocol. Use websocket if you are unsure.
-          Example: For websocket with TLS wss://wstunnel.example.com or without ws://wstunnel.example.com
-                   For http2 with TLS https://wstunnel.example.com or without http://wstunnel.example.com
+          Example: For websocket with TLS wss://spark.example.com or without ws://spark.example.com
+                   For http2 with TLS https://spark.example.com or without http://spark.example.com
           
           *WARNING* HTTP2 as transport protocol is harder to make it works because:
             - If you are behind a (reverse) proxy/CDN they are going to buffer the whole request before forwarding it to the server
               Obviously, this is not going to work for tunneling traffic
-            - if you have wstunnel behind a reverse proxy, most of them (i.e: nginx) are going to turn http2 request into http1
+            - if you have spark behind a reverse proxy, most of them (i.e: nginx) are going to turn http2 request into http1
               This is not going to work, because http1 does not support streaming naturally
-          The only way to make it works with http2 is to have wstunnel directly exposed to the internet without any reverse proxy in front of it
+          The only way to make it works with http2 is to have spark directly exposed to the internet without any reverse proxy in front of it
 
 Options:
   -L, --local-to-remote <{tcp,udp,socks5,stdio,unix}://[BIND:]PORT:HOST:PORT>
@@ -126,9 +126,9 @@ Options:
           'tproxy+udp://[::1]:1212?timeout_sec=10'  listen locally on udp on port 1212 as a *transparent proxy* and forward dynamically requested tunnel
                                                     linux only and requires sudo/CAP_NET_ADMIN
           
-          'stdio://google.com:443'         =>       listen for data from stdio, mainly for `ssh -o ProxyCommand="wstunnel client --log-lvl=off -L stdio://%h:%p ws://localhost:8080" my-server`
+          'stdio://google.com:443'         =>       listen for data from stdio, mainly for `ssh -o ProxyCommand="spark client --log-lvl=off -L stdio://%h:%p ws://localhost:8080" my-server`
           
-          'unix:///tmp/wstunnel.sock:g.com:443' =>  listen for data from unix socket of path /tmp/wstunnel.sock and forward to g.com:443
+          'unix:///tmp/spark.sock:g.com:443' =>  listen for data from unix socket of path /tmp/spark.sock and forward to g.com:443
 
   -R, --remote-to-local <{tcp,udp,socks5,unix}://[BIND:]PORT:HOST:PORT>
           Listen on remote and forwards traffic from local. Can be specified multiple times. Only tcp is supported
@@ -137,7 +137,7 @@ Options:
           'udp://1212:1.1.1.1:53'          =>     listen on server for incoming udp on port 1212 and forward to cloudflare dns 1.1.1.1 on port 53 from local machine
           'socks5://[::1]:1212'            =>     listen on server for incoming socks5 request on port 1212 and forward dynamically request from local machine
           'http://[::1]:1212'              =>     listen on server for incoming http proxy request on port 1212 and forward dynamically request from local machine (login/password is supported)
-          'unix://wstunnel.sock:g.com:443' =>     listen on server for incoming data from unix socket of path wstunnel.sock and forward to g.com:443 from local machine
+          'unix://spark.sock:g.com:443' =>     listen on server for incoming data from unix socket of path spark.sock and forward to g.com:443 from local machine
 
       --no-color <NO_COLOR>
           Disable color output in logs
@@ -146,7 +146,7 @@ Options:
 
       --socket-so-mark <INT>
           (linux only) Mark network packet with SO_MARK sockoption with the specified value.
-          You need to use {root, sudo, capabilities} to run wstunnel when using this option
+          You need to use {root, sudo, capabilities} to run spark when using this option
 
   -c, --connection-min-idle <INT>
           Client will maintain a pool of open connection to the server, in order to speed up the connection process.
@@ -180,7 +180,7 @@ Options:
           Warning: Most reverse proxies rely on it
 
       --tls-ech-enable
-          Enable ECH (encrypted sni) during TLS handshake to wstunnel server.
+          Enable ECH (encrypted sni) during TLS handshake to spark server.
           Warning: Ech DNS config is not refreshed over time. It is retrieved only once at startup of the program
 
       --tls-verify-certificate
@@ -255,11 +255,11 @@ Options:
 
 ```
 SERVER
-Usage: wstunnel server [OPTIONS] <ws[s]://0.0.0.0[:port]>
+Usage: spark server [OPTIONS] <ws[s]://0.0.0.0[:port]>
 
 Arguments:
   <ws[s]://0.0.0.0[:port]>
-          Address of the wstunnel server to bind to
+          Address of the spark server to bind to
           Example: With TLS wss://0.0.0.0:8080 or without ws://[::]:8080
           
           The server is capable of detecting by itself if the request is websocket or http2. So you don't need to specify it.
@@ -267,7 +267,7 @@ Arguments:
 Options:
       --socket-so-mark <INT>
           (linux only) Mark network packet with SO_MARK sockoption with the specified value.
-          You need to use {root, sudo, capabilities} to run wstunnel when using this option
+          You need to use {root, sudo, capabilities} to run spark when using this option
 
       --websocket-ping-frequency-sec <seconds>
           Frequency at which the server will send websocket ping to client.
@@ -354,12 +354,12 @@ Options:
 
 ## Release <a name="release"></a>
 
-Static binaries are available in [release section](https://github.com/erebe/wstunnel/releases)
+Static binaries are available in [release section](https://github.com/deadmau5v/spark/releases)
 
-docker image are available at https://github.com/erebe/wstunnel/pkgs/container/wstunnel
+docker image are available at https://github.com/deadmau5v/spark/pkgs/container/spark
 
 ```bash
-docker pull ghcr.io/erebe/wstunnel:latest
+docker pull ghcr.io/deadmau5v/spark:latest
 ```
 
 ## Examples <a name="examples"></a>
@@ -372,13 +372,13 @@ docker pull ghcr.io/erebe/wstunnel:latest
 * [Android](#android)
 * [Proxy easily any traffic with transparent proxy (linux only)](#tproxy)
 * [Reverse tunneling](#reverse)
-* [How to secure access of your wstunnel server](#secure)
+* [How to secure access of your spark server](#secure)
 * [Use HTTP2 instead of websocket for transport protocol](#http2)
 * [Maximize your stealthiness/Make your traffic discrete](#stealth)
 
 ### Understand command line syntax <a name="syntax"></a>
 
-Wstunnel command line mimic ssh tunnel syntax.
+Spark command line mimics ssh tunnel syntax.
 You can take reference to [this article](https://iximiuz.com/en/posts/ssh-tunnels/), or this diagram to understand
 <img src="https://iximiuz.com/ssh-tunnels/ssh-tunnels.png">
 
@@ -386,17 +386,17 @@ You can take reference to [this article](https://iximiuz.com/en/posts/ssh-tunnel
 
 ### Simplest one <a name="simple"></a>
 
-On your remote host, start the wstunnel's server by typing this command in your terminal
+On your remote host, start the spark's server by typing this command in your terminal
 
 ```bash
-wstunnel server wss://[::]:8080
+spark server wss://[::]:8080
 ```
 
 This will create a websocket server listening on any interface on port 8080.
 On the client side use this command to forward traffic through the websocket tunnel
 
 ```bash
-wstunnel client -L socks5://127.0.0.1:8888 --connection-min-idle 5 wss://myRemoteHost:8080
+spark client -L socks5://127.0.0.1:8888 --connection-min-idle 5 wss://myRemoteHost:8080
 ```
 
 This command will create a socks5 server listening on port 8888 of the loopback interface and will forward traffic
@@ -420,10 +420,10 @@ curl -x socks5h://127.0.0.1:8888 http://google.com/
 
 ### As proxy command for SSH <a name="ssh"></a>
 
-You can specify `stdio` as source port on the client side if you wish to use wstunnel as part of a proxy command for ssh
+You can specify `stdio` as source port on the client side if you wish to use spark as part of a proxy command for ssh
 
 ```bash
-ssh -o ProxyCommand="wstunnel client --log-lvl=off -L stdio://%h:%p ws://myRemoteHost:8080" my-server
+ssh -o ProxyCommand="spark client --log-lvl=off -L stdio://%h:%p ws://myRemoteHost:8080" my-server
 ```
 
 ---
@@ -431,12 +431,12 @@ ssh -o ProxyCommand="wstunnel client --log-lvl=off -L stdio://%h:%p ws://myRemot
 ### When behind a corporate proxy <a name="corporate"></a>
 
 An other useful example is when you want to bypass an http proxy (a corporate proxy for example)
-The most reliable way to do it is to use wstunnel as described below
+The most reliable way to do it is to use spark as described below
 
-Start your wstunnel server with tls activated
+Start your spark server with tls activated
 
 ```bash
-wstunnel server wss://[::]:443 --restrict-to 127.0.0.1:22
+spark server wss://[::]:443 --restrict-to 127.0.0.1:22
 ```
 
 The server will listen on any interface using port 443 (https) and restrict traffic to be forwarded only to the ssh
@@ -445,13 +445,13 @@ daemon.
 **Be aware that the server will use self signed certificate with weak cryptographic algorithm.
 It was made in order to add the least possible overhead while still being compliant with tls.**
 
-**Do not rely on wstunnel to protect your privacy, if it is one of your concerns, you should only forwards traffic that
+**Do not rely on spark to protect your privacy, if it is one of your concerns, you should only forwards traffic that
 is already secure by design (ie: https or vpn traffic)**
 
 Now on the client side start the client with
 
 ```bash
-wstunnel client -L tcp://9999:127.0.0.1:22 -p http://mycorporateproxy:8080 wss://myRemoteHost:443
+spark client -L tcp://9999:127.0.0.1:22 -p http://mycorporateproxy:8080 wss://myRemoteHost:443
 ```
 
 It will start a tcp server on port 9999 that will contact the corporate proxy, negotiate a tls connection with the
@@ -465,9 +465,9 @@ ssh -p 9999 login@127.0.0.1
 
 ---
 
-### Wireguard and wstunnel <a name="wireguard"></a>
+### Wireguard and spark <a name="wireguard"></a>
 
-You can find a full [tutorial](https://community.hetzner.com/tutorials/obfuscating-wireguard-using-wstunnel) that explain how to setup wstunnel and wireguard at [here](https://community.hetzner.com/tutorials/obfuscating-wireguard-using-wstunnel)
+You can find a full [tutorial](https://community.hetzner.com/tutorials/obfuscating-wireguard-using-spark) that explain how to setup spark and wireguard at [here](https://community.hetzner.com/tutorials/obfuscating-wireguard-using-spark)
 
 For a quick explanation see below.
 
@@ -484,16 +484,16 @@ AllowedIPs = 0.0.0.0/0, ::/0
 Endpoint = my.server.com:51820
 ```
 
-Start wstunnel server on my.server.com like this
+Start spark server on my.server.com like this
 
 ```
-wstunnel server --restrict-to localhost:51820 wss://[::]:443
+spark server --restrict-to localhost:51820 wss://[::]:443
 ```
 
 on your local machine start the client like this
 
 ```
-wstunnel client -L 'udp://51820:localhost:51820?timeout_sec=0' wss://my.server.com:443
+spark client -L 'udp://51820:localhost:51820?timeout_sec=0' wss://my.server.com:443
 ```
 
 change your wireguard client config to something
@@ -510,9 +510,9 @@ MTU = 1400
 [Peer]
 PublicKey = 9iicV7Stdl/U0RH1BNf3VvlVjaa4Eus6QPEfEz6cR0c=
 AllowedIPs = 0.0.0.0/0, ::/0
-# Should target port where wstunnel client is listenning to
+# Should target port where spark client is listenning to
 Endpoint = localhost:51820
-# Should not be necessary if you enable wstunnel client websocket ping
+# Should not be necessary if you enable spark client websocket ping
 PersistentKeepalive = 20
 ```
 
@@ -536,12 +536,12 @@ FAQ
 - If you see some throughput issue, be sure to lower the MTU of your wireguard interface (you can do it via config file)
   to something like 1300 or you will endup fragmenting udp packet (due to overhead of other layer) which is always
   causing issues
-- If wstunnel cannot connect to server while wireguard is on, be sure you have added a static route via your main
-  gateway for the ip of wstunnel server.
+- If spark cannot connect to server while wireguard is on, be sure you have added a static route via your main
+  gateway for the ip of spark server.
   Else if you forward all the traffic without putting a static route, you will endup looping your traffic wireguard
-  interface -> wstunnel client -> wireguard interface
+  interface -> spark client -> wireguard interface
 - If you have trouble making it works on windows, please check this issue
-  https://github.com/erebe/wstunnel/issues/252
+  https://github.com/deadmau5v/spark/issues/252
 
 ---
 
@@ -549,7 +549,7 @@ FAQ
 
 You can use the android binary and use termux to run it on your phone.
 
-If you want a guide regarding how to use wstunnel on Android, you can follow this [guide](https://community.hetzner.com/tutorials/obfuscating-wireguard-using-wstunnel)
+If you want a guide regarding how to use spark on Android, you can follow this [guide](https://community.hetzner.com/tutorials/obfuscating-wireguard-using-spark)
 
 ---
 
@@ -557,10 +557,10 @@ If you want a guide regarding how to use wstunnel on Android, you can follow thi
 ### Transparent proxy (linux only) <a name="tproxy"></a>
 
 Transparent proxy allows to easily proxy any program.
-Start wstunnel with
+Start spark with
 
 ```
-sudo wstunnel client -L 'tproxy+tcp://1080' -L 'tproxy+udp://1080' wss://my.server.com:443
+sudo spark client -L 'tproxy+tcp://1080' -L 'tproxy+udp://1080' wss://my.server.com:443
 ```
 
 use this project to route traffic seamlessly https://github.com/NOBLES5E/cproxy. It works with any program
@@ -579,10 +579,10 @@ cproxy --port 1080 --mode tproxy -- bash
 
 ### Reverse tunneling <a name="reverse"></a>
 
-Start wstunnel with
+Start spark with
 
 ```
-sudo wstunnel client -R 'tcp://[::]:8000:localhost:8000' wss://my.server.com:443
+sudo spark client -R 'tcp://[::]:8000:localhost:8000' wss://my.server.com:443
 ```
 
 In another terminal, start a simple webserver on your local machine
@@ -599,27 +599,27 @@ curl http://localhost:8000
 
 ---
 
-### How to secure the access of your wstunnel server <a name="secure"></a>
+### How to secure the access of your spark server <a name="secure"></a>
 
 Generate a secret, let's say `h3GywpDrP6gJEdZ6xbJbZZVFmvFZDCa4KcRd`
 
 Now start you server with the following command
 
 ```bash
-wstunnel server --restrict-http-upgrade-path-prefix h3GywpDrP6gJEdZ6xbJbZZVFmvFZDCa4KcRd  wss://[::]:443 
+spark server --restrict-http-upgrade-path-prefix h3GywpDrP6gJEdZ6xbJbZZVFmvFZDCa4KcRd  wss://[::]:443 
 ```
 
 And start your client with
 
 ```bash
-wstunnel client --http-upgrade-path-prefix h3GywpDrP6gJEdZ6xbJbZZVFmvFZDCa4KcRd ... wss://myRemoteHost
+spark client --http-upgrade-path-prefix h3GywpDrP6gJEdZ6xbJbZZVFmvFZDCa4KcRd ... wss://myRemoteHost
 ```
 
-Now your wstunnel server, will only accept connection if the client specify the correct path prefix during the upgrade
+Now your spark server, will only accept connection if the client specify the correct path prefix during the upgrade
 request.
 
 If you need more customization, you can use a config file to specify specific rules with `--restrict-config`.
-You can find examples of restriction rules [there](https://github.com/erebe/wstunnel/blob/main/restrictions.yaml)
+You can find examples of restriction rules [there](https://github.com/deadmau5v/spark/blob/main/restrictions.yaml)
 
 ---
 
@@ -627,26 +627,26 @@ You can find examples of restriction rules [there](https://github.com/erebe/wstu
 
 Use this only if websocket is blocked by your firewall/proxy. Otherwise, it is less performant than websocket.
 
-Start your wstunnel server as usual with
+Start your spark server as usual with
 
 ```bash
-wstunnel server wss://[::]:8080
+spark server wss://[::]:8080
 ```
 
 On the client the only difference is to specify https:// instead of wss://
 
 ```bash
-wstunnel client -L socks5://127.0.0.1:8888 https://myRemoteHost:8080
+spark client -L socks5://127.0.0.1:8888 https://myRemoteHost:8080
 ```
 
 **WARNING** HTTP2 as transport protocol is harder to make it works because:
 
 - If you are behind a (reverse) proxy/CDN they may buffer the whole request before forwarding it to the server.
   Cloudflare is doing that, and obviously, this is not going to work for tunneling traffic
-- if you have wstunnel behind a reverse proxy, most of them (i.e: nginx) are going to turn http2 request into http1
+- if you have spark behind a reverse proxy, most of them (i.e: nginx) are going to turn http2 request into http1
   This is not going to work, because http1 does not support streaming naturally
 
-The only way to make it works with HTTP2 is to have wstunnel server directly exposed to the internet without any reverse
+The only way to make it works with HTTP2 is to have spark server directly exposed to the internet without any reverse
 proxy in front of it
 
 In addition, you may also want to play with the request headers (i.e: content-length and content-type) to make it looks
@@ -656,17 +656,17 @@ application/octet-stream
 
 ### Maximize your stealthiness/Make your traffic discrete <a name="stealth"></a>
 
-* Use wstunnel with TLS activated (wss://) and use your own certificate
+* Use spark with TLS activated (wss://) and use your own certificate
     * Embedded certificate is self-signed and are the same for everyone, so can be easily fingerprinted/flagged
     * Use valid certificate (i.e: with Let's Encrypt), self-signed certificate are suspicious
 * Use a custom http path prefix (see `--http-upgrade-path-prefix` option)
-    * To avoid having the same url than every other wstunnel user
+    * To avoid having the same url than every other spark user
 * Change your tls-sni-override to a domain is known to be allowed (i.e: google.com, baidu.com, etc...)
-    * this will not work if your wstunnel server is behind a reverse proxy (i.e: Nginx, Cloudflare, HAProxy, ...)
+    * this will not work if your spark server is behind a reverse proxy (i.e: Nginx, Cloudflare, HAProxy, ...)
 
 ## Benchmark <a name="bench"></a>
 
-![image](https://github.com/erebe/wstunnel/assets/854278/6e3580b0-c4f8-449e-881e-64d1df56b0ce)
+![image](https://github.com/deadmau5v/spark/assets/854278/6e3580b0-c4f8-449e-881e-64d1df56b0ce)
 
 ## How to Build <a name="build"></a>
 
@@ -679,6 +679,32 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 and run those commands at the root of the project
 
 ```
-cargo build --package wstunnel-cli
-target/debug/wstunnel ...
+cargo build --package spark-cli
+target/debug/spark ...
+```
+
+## YAML Config
+
+Client:
+
+```yaml
+remote_addr: "wss://example.com:443"
+shared_secret: "your-secret"
+local_to_remote:
+  - "socks5://127.0.0.1:1080"
+```
+
+```bash
+target/debug/spark client -c client.yaml
+```
+
+Server:
+
+```yaml
+remote_addr: "wss://0.0.0.0:443"
+shared_secret: "your-secret"
+```
+
+```bash
+target/debug/spark server -c server.yaml
 ```

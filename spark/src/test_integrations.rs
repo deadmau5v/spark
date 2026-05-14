@@ -57,7 +57,7 @@ async fn client_ws(dns_resolver: DnsResolver) -> WsClient {
         remote_addr: TransportAddr::new(TransportScheme::Ws, Host::Ipv4("127.0.0.1".parse().unwrap()), 8080, None)
             .unwrap(),
         socket_so_mark: SoMark::new(None),
-        http_upgrade_path_prefix: "wstunnel".to_string(),
+        http_upgrade_path_prefix: "spark".to_string(),
         http_upgrade_credentials: None,
         http_headers: HashMap::new(),
         http_headers_file: None,

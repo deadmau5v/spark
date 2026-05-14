@@ -331,7 +331,7 @@ impl<E: crate::TokioExecutorRef> WsServer<E> {
     }
 
     pub async fn serve(self, restrictions: RestrictionsRules) -> anyhow::Result<()> {
-        info!("Starting wstunnel server listening on {}", self.config.bind);
+        info!("Starting spark server listening on {}", self.config.bind);
 
         // setup upgrade request handler
         let mk_websocket_upgrade_fn = |server: WsServer<_>,
@@ -485,7 +485,7 @@ impl<E: crate::TokioExecutorRef> WsServer<E> {
                                     mk_websocket_upgrade_fn(server, restrictions, restrict_path, peer_addr);
                                 let conn_fut = http1::Builder::new()
                                     .timer(TokioTimer::new())
-                                    // https://github.com/erebe/wstunnel/issues/358
+                                    // https://github.com/erebe/spark/issues/358
                                     // disabled, to avoid conflict with --connection-min-idle flag, that open idle connections
                                     .header_read_timeout(None)
                                     .serve_connection(tls_stream, service_fn(websocket_upgrade_fn))

@@ -14,8 +14,8 @@ Steps to reproduce the behavior:
 ## Expected behavior
 A clear and concise description of what you expected to happen.
 
-## Your wstunnel setup
-Paste your logs of wstunnel, started with `--log-lvl=DEBUG`, and with the `command line used`
+## Your spark setup
+Paste your logs of spark, started with `--log-lvl=DEBUG`, and with the `command line used`
  - client
  - server
 
